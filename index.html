@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Музыка твоего дня рождения</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #141e30, #243b55);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: rgba(0,0,0,0.4);
+      padding: 24px;
+      border-radius: 16px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    h1 { margin-top: 0; }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+    }
+    button {
+      background: #ff5c8a;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.9; }
+    .section {
+      margin-top: 20px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.2);
+    }
+    a { color: #ffd1e1; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🎂 Музыка твоего дня рождения</h1>
+    <p>Выбери дату — я покажу релиз дня и главный хит недели</p>
+
+    <input type="date" id="birthdate" />
+    <button onclick="loadMusic()">Показать</button>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    // Прямые ссылки вместо JS — самый надёжный вариант
+// (JS-редиректы могут блокироваться средой предпросмотра)
+
+
+    async function loadMusic() {
+      const date = document.getElementById('birthdate').value;
+      const result = document.getElementById('result');
+      result.innerHTML = '';
+
+      if (!date) {
+        result.innerHTML = '❗ Выбери дату';
+        return;
+      }
+
+      const [year, month, day] = date.split('-');
+
+      // 1. Трек, вышедший в этот день (MusicBrainz)
+      const mbUrl = `https://musicbrainz.org/ws/2/release/?query=date:${year}-${month}-${day}&fmt=json&limit=1`;
+
+      try {
+        const mbRes = await fetch(mbUrl, {
+          headers: { 'User-Agent': 'BirthdayMusicApp/1.0 ( demo@example.com )' }
+        });
+        const mbData = await mbRes.json();
+
+        if (mbData.releases && mbData.releases.length > 0) {
+          const rel = mbData.releases[0];
+          const title = rel.title;
+          const artist = rel['artist-credit'][0].name;
+          const query = `${artist} ${title} official music video`;
+          const ytLink = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+
+          result.innerHTML += `<div class="section">
+            <h3>🎵 Релиз дня</h3>
+            <strong>${title}</strong><br>
+            ${artist} (${year})<br>
+            <a href="${ytLink}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">▶️ Смотреть на YouTube</a>
+          </div>`;
+        } else {
+          result.innerHTML += '<div class="section">🎵 Нет данных о релизе в этот день</div>';
+        }
+      } catch (e) {
+        result.innerHTML += '<div class="section">⚠️ Ошибка загрузки MusicBrainz</div>';
+      }
+
+      // 2. Самый популярный трек (заглушка Billboard)
+      const billboardExample = { title: 'Macarena', artist: 'Los del Río' };
+      const bbQuery = `${billboardExample.artist} ${billboardExample.title} official music video`;
+      const bbYt = `https://www.youtube.com/results?search_query=${encodeURIComponent(bbQuery)}`;
+
+      result.innerHTML += `<div class="section">
+        <h3>🔥 Самый популярный трек недели</h3>
+        <strong>${billboardExample.title}</strong><br>
+        ${billboardExample.artist}<br>
+        <a href="${bbYt}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">▶️ Смотреть на YouTube</a>
+      </div>`;
+    }
+  </script>
+</body>
+</html>
