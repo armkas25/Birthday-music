@@ -85,7 +85,11 @@
       // 1. Релизы дня (MusicBrainz)
       if (currentTab === 'day') {
         try {
-          const mbRes = await fetch(mbUrl, { headers: { 'User-Agent': 'BirthdayMusicApp/1.0' } });
+          const mbRes = await fetch(mbUrl, {
+            headers: {
+              'User-Agent': 'BirthdayMusicApp/1.0 ( https://github.com/birthday-music )'
+            }
+          });
           const mbData = await mbRes.json();
 
           if (mbData.releases && mbData.releases.length > 0) {
@@ -132,7 +136,7 @@
             result.innerHTML += '<div class="section">Нет релизов в этот день</div>';
           }
         } catch {
-          result.innerHTML += '<div class="section">Ошибка загрузки MusicBrainz</div>';
+          result.innerHTML += '<div class="section">⚠️ MusicBrainz временно недоступен. Попробуй позже.</div>';
         }
       }
 
