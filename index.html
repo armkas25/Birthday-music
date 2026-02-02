@@ -86,6 +86,23 @@
           const rel = mbData.releases[0];
           const title = rel.title;
           const artist = rel['artist-credit'][0].name;
+
+          // iTunes preview
+          const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&media=music&entity=song&limit=1`;
+          let previewHtml = '';
+
+          try {
+            const itRes = await fetch(itunesUrl);
+            const itData = await itRes.json();
+            if (itData.results && itData.results.length > 0 && itData.results[0].previewUrl) {
+              previewHtml = `<audio controls src="${itData.results[0].previewUrl}"></audio>`;
+            } else {
+              previewHtml = '<div>🔇 Превью недоступно</div>';
+            }
+          } catch {
+            previewHtml = '<div>🔇 Превью недоступно</div>';
+          }
+
           const query = `${artist} ${title} official music video`;
           const ytLink = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
 
@@ -93,6 +110,7 @@
             <h3>🎵 Релиз дня</h3>
             <strong>${title}</strong><br>
             ${artist} (${year})<br>
+            ${previewHtml}<br>
             <a href="${ytLink}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">▶️ Смотреть на YouTube</a>
           </div>`;
         } else {
