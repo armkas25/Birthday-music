@@ -53,10 +53,19 @@
     <input type="date" id="birthdate" />
     <button onclick="loadMusic()">Показать</button>
 
+    <div class="section">
+      <button onclick="showTab('day')">🎂 Релизы дня</button>
+      <button onclick="showTab('week')">🔥 Трек недели</button>
+    </div>
     <div id="result"></div>
   </div>
 
   <script>
+    let currentTab = 'day';
+    function showTab(tab) {
+      currentTab = tab;
+      loadMusic();
+    }
     // Прямые ссылки вместо JS — самый надёжный вариант
 // (JS-редиректы могут блокироваться средой предпросмотра)
 
@@ -73,51 +82,58 @@
 
       const [year, month, day] = date.split('-');
 
-      // 1. Трек, вышедший в этот день (MusicBrainz)
-      const mbUrl = `https://musicbrainz.org/ws/2/release/?query=date:${year}-${month}-${day}&fmt=json&limit=1`;
+      // 1. Релизы дня (MusicBrainz)
+      if (currentTab === 'day') {
+        try {
+          const mbRes = await fetch(mbUrl, { headers: { 'User-Agent': 'BirthdayMusicApp/1.0' } });
+          const mbData = await mbRes.json();
 
-      try {
-        const mbRes = await fetch(mbUrl, {
-          headers: { 'User-Agent': 'BirthdayMusicApp/1.0 ( demo@example.com )' }
-        });
-        const mbData = await mbRes.json();
+          if (mbData.releases && mbData.releases.length > 0) {
+            result.innerHTML += '<div class="section"><h3>🎂 Релизы в этот день</h3></div>';
 
-        if (mbData.releases && mbData.releases.length > 0) {
-          const rel = mbData.releases[0];
-          const title = rel.title;
-          const artist = rel['artist-credit'][0].name;
+            // сначала отфильтруем не-альбомы
+            const filtered = mbData.releases.filter(r => r['release-group']?.['primary-type'] !== 'Album');
+            const items = [];
 
-          // iTunes preview
-          const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&media=music&entity=song&limit=1`;
-          let previewHtml = '';
+            for (const rel of filtered) {
+              const title = rel.title;
+              const artist = rel['artist-credit']?.[0]?.name || 'Unknown';
 
-          try {
-            const itRes = await fetch(itunesUrl);
-            const itData = await itRes.json();
-            if (itData.results && itData.results.length > 0 && itData.results[0].previewUrl) {
-              previewHtml = `<audio controls src="${itData.results[0].previewUrl}"></audio>`;
-            } else {
-              previewHtml = '<div>🔇 Превью недоступно</div>';
+              const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(artist + ' ' + title)}&media=music&entity=song&limit=1`;
+              let hasPreview = false;
+              let previewHtml = '<div>🔇 Превью недоступно</div>';
+
+              try {
+                const itRes = await fetch(itunesUrl);
+                const itData = await itRes.json();
+                if (itData.results?.[0]?.previewUrl) {
+                  hasPreview = true;
+                  previewHtml = `<audio controls src="${itData.results[0].previewUrl}"></audio>`;
+                }
+              } catch {}
+
+              const ytLink = `https://www.youtube.com/results?search_query=${encodeURIComponent(artist + ' ' + title + ' official music video')}`;
+
+              items.push({ title, artist, previewHtml, ytLink, hasPreview });
             }
-          } catch {
-            previewHtml = '<div>🔇 Превью недоступно</div>';
+
+            // сортировка: сначала с превью
+            items.sort((a, b) => Number(b.hasPreview) - Number(a.hasPreview));
+
+            for (const item of items) {
+              result.innerHTML += `<div class="section">
+                <strong>${item.title}</strong><br>
+                ${item.artist}<br>
+                ${item.previewHtml}<br>
+                <a href="${item.ytLink}" target="_blank" rel="noopener noreferrer">▶️ YouTube</a>
+              </div>`;
+            }
+          } else {
+            result.innerHTML += '<div class="section">Нет релизов в этот день</div>';
           }
-
-          const query = `${artist} ${title} official music video`;
-          const ytLink = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-
-          result.innerHTML += `<div class="section">
-            <h3>🎵 Релиз дня</h3>
-            <strong>${title}</strong><br>
-            ${artist} (${year})<br>
-            ${previewHtml}<br>
-            <a href="${ytLink}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">▶️ Смотреть на YouTube</a>
-          </div>`;
-        } else {
-          result.innerHTML += '<div class="section">🎵 Нет данных о релизе в этот день</div>';
+        } catch {
+          result.innerHTML += '<div class="section">Ошибка загрузки MusicBrainz</div>';
         }
-      } catch (e) {
-        result.innerHTML += '<div class="section">⚠️ Ошибка загрузки MusicBrainz</div>';
       }
 
       // 2. Самый популярный трек (заглушка Billboard)
